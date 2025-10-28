@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBC News Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .predict-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-btn {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .clear-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .category-badge {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+
+        .confidence-badge {
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .probabilities {
+            margin-top: 20px;
+        }
+
+        .probabilities h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .prob-item {
+            margin-bottom: 12px;
+        }
+
+        .prob-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .prob-label {
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #333;
+        }
+
+        .prob-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .prob-bar-container {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .prob-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease-out;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            display: none;
+            padding: 15px;
+            background: #ffebee;
+            color: #c62828;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 5px solid #c62828;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .examples {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .examples h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .example-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .example-chip {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-chip:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📰 News Classifier</h1>
+            <p>AI-Powered News Category Detection using Naive Bayes</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <label for="newsText">Enter News Article Text:</label>
+                <textarea 
+                    id="newsText" 
+                    placeholder="Paste or type your news article here... (minimum 10 characters)"
+                ></textarea>
+
+                <div class="button-group">
+                    <button class="predict-btn" onclick="predictCategory()">
+                        🎯 Predict Category
+                    </button>
+                    <button class="clear-btn" onclick="clearAll()">
+                        🗑️ Clear
+                    </button>
+                </div>
+
+                <div class="error" id="errorMessage"></div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing article...</p>
+            </div>
+
+            <div class="result-section" id="results">
+                <div class="result-header">
+                    <div class="category-badge" id="categoryResult"></div>
+                    <div class="confidence-badge" id="confidenceResult"></div>
+                </div>
+
+                <div class="probabilities">
+                    <h3>📊 All Category Probabilities:</h3>
+                    <div id="probabilitiesContainer"></div>
+                </div>
+            </div>
+
+            <div class="examples">
+                <h3>💡 Try Example Articles:</h3>
+                <div class="example-chips">
+                    <div class="example-chip" onclick="loadExample(0)">Business</div>
+                    <div class="example-chip" onclick="loadExample(1)">Sports</div>
+                    <div class="example-chip" onclick="loadExample(2)">Tech</div>
+                    <div class="example-chip" onclick="loadExample(3)">Entertainment</div>
+                    <div class="example-chip" onclick="loadExample(4)">Politics</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/predict';
+
+        const examples = [
+            "Federal Reserve maintains interest rates at 5.25% amid inflation concerns as major banks report strong quarterly earnings and investor confidence increases significantly",
+            "Manchester City defeats Real Madrid 3-1 in UEFA Champions League quarterfinal with Erling Haaland scoring spectacular hat-trick at Etihad Stadium in front of 50000 fans",
+            "OpenAI unveils GPT-5 with revolutionary reasoning capabilities achieving human-level performance on complex scientific problem solving tasks and mathematical proofs",
+            "Marvel Studios announces Avengers Secret Wars for 2027 release featuring return of Robert Downey Jr and original cast members in epic conclusion to Marvel Cinematic Universe",
+            "United Nations Security Council passes historic climate resolution requiring all member nations to reduce carbon emissions by 50% before 2035 with strict enforcement measures"
+        ];
+
+        function loadExample(index) {
+            document.getElementById('newsText').value = examples[index];
+            clearResults();
+        }
+
+        function clearAll() {
+            document.getElementById('newsText').value = '';
+            clearResults();
+            hideError();
+        }
+
+        function clearResults() {
+            document.getElementById('results').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+            document.querySelector('.predict-btn').disabled = true;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+            document.querySelector('.predict-btn').disabled = false;
+        }
+
+        async function predictCategory() {
+            const text = document.getElementById('newsText').value.trim();
+
+            if (!text) {
+                showError('Please enter some text to classify.');
+                return;
+            }
+
+            if (text.length < 10) {
+                showError('Text too short. Please enter at least 10 characters.');
+                return;
+            }
+
+            hideError();
+            clearResults();
+            showLoading();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Prediction failed');
+                }
+
+                displayResults(data);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Error: ${error.message}. Make sure Flask backend is running on http://localhost:5000`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResults(data) {
+            const { prediction, all_probabilities } = data;
+
+            document.getElementById('categoryResult').textContent = prediction.category;
+            document.getElementById('confidenceResult').textContent = `${prediction.confidence}% Confidence`;
+
+            const container = document.getElementById('probabilitiesContainer');
+            container.innerHTML = '';
+
+            for (const [category, probability] of Object.entries(all_probabilities)) {
+                const probItem = document.createElement('div');
+                probItem.className = 'prob-item';
+                probItem.innerHTML = `
+                    <div class="prob-header">
+                        <span class="prob-label">${category}</span>
+                        <span class="prob-value">${probability.toFixed(2)}%</span>
+                    </div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar" style="width: ${probability}%"></div>
+                    </div>
+                `;
+                container.appendChild(probItem);
+            }
+
+            document.getElementById('results').classList.add('show');
+        }
+
+        document.getElementById('newsText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                predictCategory();
+            }
+        });
+    </script>
+</body>
+</html>
